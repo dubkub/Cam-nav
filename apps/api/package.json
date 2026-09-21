@@ -1,0 +1,24 @@
+{
+  "name": "@cam-nav/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@cam-nav/core": "workspace:*",
+    "@cam-nav/data": "workspace:*",
+    "@cam-nav/routing": "workspace:*",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/rate-limit": "^10.1.1",
+    "fastify": "^5.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": { "typescript": "^5.6.3", "vitest": "^2.1.3", "tsx": "^4.19.1" }
+}

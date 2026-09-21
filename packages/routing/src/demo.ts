@@ -96,7 +96,7 @@ export function createDemoCity(centre: LatLon = { lat: 37.7749, lon: -122.4194 }
       operator: 'demo_city_police',
       sharingGroup: 'flock_network',
       confidence: 0.86,
-      provenance: [{ source: 'fixture', ref: `demo/alpr/${col}`, lastVerifiedAt: verifiedAt }],
+      provenance: [{ source: 'fixture', ref: `demo/alpr/${col}`, lastVerifiedAt: verifiedAt, license: 'CC0-1.0' }],
       tags: { note: 'synthetic demo data' },
     });
   }
@@ -114,7 +114,7 @@ export function createDemoCity(centre: LatLon = { lat: 37.7749, lon: -122.4194 }
       operator: 'demo_city_police',
       sharingGroup: 'flock_network',
       confidence: 0.74,
-      provenance: [{ source: 'fixture', ref: `demo/alpr/side-${col}`, lastVerifiedAt: verifiedAt }],
+      provenance: [{ source: 'fixture', ref: `demo/alpr/side-${col}`, lastVerifiedAt: verifiedAt, license: 'CC0-1.0' }],
       tags: { note: 'synthetic demo data' },
     });
   }
@@ -128,7 +128,7 @@ export function createDemoCity(centre: LatLon = { lat: 37.7749, lon: -122.4194 }
     directionDeg: 90,
     operator: 'demo_city_dot',
     confidence: 0.9,
-    provenance: [{ source: 'fixture', ref: 'demo/rlc/1', lastVerifiedAt: verifiedAt }],
+    provenance: [{ source: 'fixture', ref: 'demo/rlc/1', lastVerifiedAt: verifiedAt, license: 'CC0-1.0' }],
     tags: { note: 'synthetic demo data' },
   });
 
@@ -138,7 +138,7 @@ export function createDemoCity(centre: LatLon = { lat: 37.7749, lon: -122.4194 }
     kind: 'alpr',
     position: destination(node(arterialRow + 2, 7), 0, 6),
     confidence: 0.28,
-    provenance: [{ source: 'user_report', ref: 'demo_reporter:1', lastVerifiedAt: verifiedAt }],
+    provenance: [{ source: 'user_report', ref: 'demo_reporter:1', lastVerifiedAt: verifiedAt, license: 'CC0-1.0' }],
     tags: { note: 'synthetic demo data' },
   });
 

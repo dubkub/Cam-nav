@@ -10,6 +10,7 @@ import {
   retentionMultiplier,
   DETECTOR_PROFILES,
 } from '@cam-nav/core';
+import { RoutingError } from './errors.js';
 import type { RouteRequest, RoutingEngine } from './types.js';
 
 /**
@@ -389,9 +390,14 @@ export class GraphRoutingEngine implements RoutingEngine {
     const start = this.graph.nearestNode(request.from, this.options.maxSnapM);
     const goal = this.graph.nearestNode(request.to, this.options.maxSnapM);
     if (start == null || goal == null) {
-      throw new Error('graph: origin or destination is outside the loaded road network');
+      throw new RoutingError(
+        'out_of_coverage',
+        'origin or destination is outside the loaded road network',
+      );
     }
-    if (start === goal) throw new Error('graph: origin and destination snap to the same point');
+    if (start === goal) {
+      throw new RoutingError('degenerate', 'origin and destination snap to the same point');
+    }
 
     const seen = new Set<string>();
     const candidates: RouteCandidate[] = [];
@@ -412,7 +418,9 @@ export class GraphRoutingEngine implements RoutingEngine {
       });
     }
 
-    if (candidates.length === 0) throw new Error('graph: no route found between those points');
+    if (candidates.length === 0) {
+      throw new RoutingError('no_route', 'no route found between those points');
+    }
     return candidates;
   }
 }

@@ -7,6 +7,7 @@ import {
   pathLengthM,
   scoreRouteExposure,
 } from '@cam-nav/core';
+import { RoutingError } from './errors.js';
 import type { AvoidArea, CandidateGenerationOptions, RouteRequest, RoutingEngine } from './types.js';
 import { DEFAULT_CANDIDATE_OPTIONS } from './types.js';
 
@@ -94,7 +95,7 @@ export async function generateCandidates(
   const notes: string[] = [];
 
   const first = await engine.route({ ...request, alternates: request.alternates ?? 3 });
-  if (first.length === 0) throw new Error('routing: engine returned no route');
+  if (first.length === 0) throw new RoutingError('no_route', 'engine returned no route');
 
   const candidates: RouteCandidate[] = [];
   for (const candidate of first) {

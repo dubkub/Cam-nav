@@ -118,7 +118,9 @@ export function explainRoute(scored: ScoredRoute, baseline?: ScoredRoute): Route
 
   if (plateReaders > 0) {
     detail.push(
-      `${plural(plateReaders, 'plate reader')} along the way; about ${exposure.expectedCaptures.toFixed(1)} record${exposure.expectedCaptures >= 1.95 ? 's' : ''} of this trip expected.`,
+      `${plural(plateReaders, 'plate reader')} along the way; about ${exposure.expectedCaptures.toFixed(
+        1,
+      )} ${exposure.expectedCaptures.toFixed(1) === '1.0' ? 'record' : 'records'} of this trip expected.`,
     );
   }
 

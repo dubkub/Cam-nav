@@ -82,7 +82,12 @@ export async function runOverpassQuery(
   const doFetch = options.fetchImpl ?? globalThis.fetch;
   if (!doFetch) throw new Error('No fetch implementation available');
 
-  let lastError: unknown;
+  // One error per host, not just the last one. When mirrors fail for different
+  // reasons — one rate-limited, one unreachable, one blocked by an egress
+  // policy — reporting only the final attempt names a single host and hides
+  // that the others failed at all, which sends whoever is debugging it after
+  // the wrong problem.
+  const failures = new Map<string, string>();
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const endpoint = endpoints[attempt % endpoints.length]!;
     try {
@@ -105,12 +110,18 @@ export async function runOverpassQuery(
       }
       return (await response.json()) as OverpassResponse;
     } catch (error) {
-      lastError = error;
       if (signal?.aborted) throw error;
+      const host = new URL(endpoint).host;
+      const message = error instanceof Error ? error.message : String(error);
+      // Keep the first failure per host; a retry against an already-failed
+      // mirror rarely says anything new.
+      if (!failures.has(host)) failures.set(host, message);
       if (attempt < maxAttempts - 1) await sleep(baseMs * 2 ** attempt);
     }
   }
-  throw new Error(`Overpass query failed after ${maxAttempts} attempts: ${String(lastError)}`);
+
+  const detail = [...failures.entries()].map(([host, message]) => `${host}: ${message}`).join('; ');
+  throw new Error(`Overpass query failed after ${maxAttempts} attempts across ${failures.size} host(s) — ${detail}`);
 }
 
 /**

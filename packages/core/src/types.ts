@@ -44,12 +44,24 @@ export interface DetectorTypeProfile {
   /**
    * Field of view in degrees; 360 means omnidirectional.
    *
-   * Measured against a real dataset (881 devices, Atlanta): not one carried an
-   * explicit `camera:angle`, so every device in a city falls back to this
-   * number and it shapes every exposure figure. Unlike the unmapped-aim
-   * fallback, which only applied to 4% of that dataset, this default is
-   * genuinely load-bearing and should be revisited with vendor specifications
-   * rather than left as an estimate.
+   * This does NOT decide whether a camera catches you travelling one way down
+   * a road versus the other. Aim is compared to the camera axis modulo 180
+   * degrees (see `axisDeltaDeg`), so a unit pointed east and one pointed west
+   * cover an east-west carriageway identically. What this governs is oblique
+   * and crossing traffic: how much a camera aimed down one carriageway is
+   * charged for a diagonal street or a slip road.
+   *
+   * It is still load-bearing. Not one of 881 devices in a real Atlanta dataset
+   * carried an explicit `camera:angle`, so every device falls back to this
+   * number, and on a measured midtown trip the expected-records figure ran
+   * from 1.29 at 30 degrees to 3.15 at 180 — a 2.4x spread. It saturates at
+   * 180 because axis symmetry caps the off-axis angle at 90.
+   *
+   * 60 is a deliberate reading of plate capture rather than of optics: a lens
+   * can see a vehicle well outside the angle at which it can resolve a plate,
+   * and beyond roughly 30 degrees off the carriageway axis, plate angle and
+   * motion blur make a usable read unlikely. Worth replacing with vendor
+   * specifications per device type.
    */
   defaultFovDeg: number;
   /** Weight on the privacy axis, 0..1. */

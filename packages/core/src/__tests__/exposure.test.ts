@@ -5,6 +5,8 @@ import {
   captureProbability,
   directionFactor,
   distanceFactor,
+  effectiveSightings,
+  linkageMultiplier,
   retentionMultiplier,
   scoreRouteExposure,
 } from '../exposure.js';
@@ -167,5 +169,69 @@ describe('detector index', () => {
     const index = new DetectorIndex(detectors, 300);
     const found = index.queryCorridor(path, 150);
     expect(found).toHaveLength(detectors.length);
+  });
+});
+
+describe('linkage', () => {
+  it('never discounts: a group can only ever cost more, never less', () => {
+    // The flaw this replaced: raising a sum of probabilities to a power >1
+    // shrinks any total below 1, so groups whose cameras probably miss you
+    // were being rewarded for it.
+    for (const units of [[0.2], [0.3, 0.4], [0.1, 0.1, 0.1], [0.74], [0.5, 0.5]]) {
+      expect(linkageMultiplier(units, 1.35)).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('charges one sighting exactly once', () => {
+    expect(linkageMultiplier([0.9], 1.35)).toBe(1);
+    expect(linkageMultiplier([0.05], 1.35)).toBe(1);
+  });
+
+  it('counts k equally likely sightings as k', () => {
+    expect(effectiveSightings([0.5, 0.5, 0.5, 0.5])).toBeCloseTo(4, 6);
+    expect(effectiveSightings([0.9])).toBeCloseTo(1, 6);
+  });
+
+  it('does not treat faint sightings as full ones', () => {
+    // One near-certain reading plus two that probably miss is not three
+    // sightings, and must not be charged as though it were.
+    const n = effectiveSightings([0.73, 0.11, 0.17]);
+    expect(n).toBeGreaterThan(1);
+    expect(n).toBeLessThan(2);
+  });
+
+  it('grows with the number of sightings', () => {
+    let previous = 0;
+    for (const k of [1, 2, 3, 5, 8]) {
+      const n = effectiveSightings(new Array(k).fill(0.6));
+      expect(n).toBeGreaterThan(previous);
+      previous = n;
+    }
+  });
+
+  it('now actually penalises the real Atlanta shape it was inert on', () => {
+    // Measured group: three Flock cameras, probabilities 0.729/0.172/0.110.
+    // Under the old power-of-sum it gained 0.4%; it should cost meaningfully
+    // more than the same exposure split across unrelated operators.
+    const units = [0.729, 0.172, 0.11];
+    const raw = units.reduce((a, b) => a + b, 0);
+    const linked = raw * linkageMultiplier(units, 1.35);
+    expect(linked / raw).toBeGreaterThan(1.1);
+    expect(linked / raw).toBeLessThan(1.5);
+  });
+
+  it('still makes one operator cost more than many, end to end', () => {
+    const path = straightPath(ORIGIN, 90, 3000, 25);
+    const route = makeRoute('r', path, 360, 3000);
+    const positions = [20, 50, 80, 110].map((i) => destination(path[i]!, 0, 10));
+    const one = positions.map((p, i) =>
+      makeDetector({ id: `s${i}`, position: p, operator: 'acme', sharingGroup: 'acme_net' }),
+    );
+    const many = positions.map((p, i) => makeDetector({ id: `d${i}`, position: p, operator: `town_${i}` }));
+
+    const linked = scoreRouteExposure(route, new DetectorIndex(one));
+    const scattered = scoreRouteExposure(route, new DetectorIndex(many));
+    expect(linked.expectedCaptures).toBeCloseTo(scattered.expectedCaptures, 5);
+    expect(linked.privacyUnits).toBeGreaterThan(scattered.privacyUnits * 1.3);
   });
 });

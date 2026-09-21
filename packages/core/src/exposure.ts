@@ -26,6 +26,13 @@ export interface ExposureOptions {
   /**
    * How much harder repeat observations by one operator hit than the first.
    * >1 because two sightings are a trajectory, not two points.
+   *
+   * Applied to the group's *effective sighting count*, not to the sum of its
+   * capture probabilities. Raising that sum to a power only penalises groups
+   * when it exceeds 1, and real per-device probabilities are well under 1:
+   * measured against Atlanta, a three-camera group summing to 1.01 gained
+   * 0.004, and two single-camera groups summing under 1 were silently
+   * *discounted*. The term was inert exactly where it was meant to bite.
    */
   linkageExponent: number;
   /** Detector kinds to ignore entirely. */
@@ -206,6 +213,39 @@ function closestApproach(
 }
 
 /**
+ * How many sightings a group effectively gets, given that each one is only a
+ * probability. This is the inverse participation ratio: k equally likely
+ * sightings give k, a single sighting gives 1, and a group dominated by one
+ * near-certain reading plus a few faint ones counts as barely more than one.
+ *
+ * It is the honest denominator for linkage. Three cameras that probably miss
+ * you are not three sightings, and should not be charged as if they were.
+ */
+export function effectiveSightings(units: readonly number[]): number {
+  let sum = 0;
+  let sumSquares = 0;
+  for (const u of units) {
+    sum += u;
+    sumSquares += u * u;
+  }
+  if (sumSquares <= 0) return 0;
+  return (sum * sum) / sumSquares;
+}
+
+/**
+ * Multiplier applied to a group's summed exposure.
+ *
+ * Always >= 1, so linkage can only ever add cost — unlike raising the sum
+ * itself to a power, which shrinks any group totalling less than one. A single
+ * sighting is exactly 1: being seen once by an operator is not a trajectory.
+ */
+export function linkageMultiplier(units: readonly number[], exponent: number): number {
+  const n = effectiveSightings(units);
+  if (n <= 1) return 1;
+  return Math.pow(n, exponent - 1);
+}
+
+/**
  * Scores one route against the detector set.
  *
  * The privacy figure is not a plain sum. Devices are bucketed by data-sharing
@@ -276,7 +316,7 @@ export function scoreRouteExposure(
   let privacyUnits = 0;
   for (const [group, list] of byGroup) {
     const raw = list.reduce((sum, e) => sum + e.privacyUnits, 0);
-    const linked = list.length > 1 ? Math.pow(raw, opts.linkageExponent) : raw;
+    const linked = raw * linkageMultiplier(list.map((e) => e.privacyUnits), opts.linkageExponent);
     privacyUnits += linked;
     const spans = list.map((e) => e.alongM);
     groups.push({

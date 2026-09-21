@@ -27,8 +27,9 @@ picked "fastest". Only the privacy axis is on the slider.
 One operator with four sightings has your direction, your timing and your route;
 four unrelated operators each have a dot. Devices are bucketed by data-sharing
 group — a vendor platform that offers cross-agency lookups counts as one
-observer nationwide — and each group's total is raised to a superlinear
-exponent. This is usually what makes a detour worth taking.
+observer nationwide — and each group's exposure is scaled by how many times it
+effectively sees you. In Atlanta, 91% of plate readers fall into one such
+group, which is what makes a detour there worth taking.
 
 **The map is the product, and the map is imperfect.** Only devices somebody has
 mapped can be avoided, so the app never claims a route is clean. Every device
@@ -77,9 +78,9 @@ the 24 devices that fall inside that box:
 graph built   57ms   5192 nodes, 8788 edges, 372 watched
 routed        25ms   4 candidates
 
-bias >= 0.00   3.7 min   2.47 expected records of the trip
-bias >= 0.05   4.0 min   1.00
-bias >= 0.36   4.8 min   0.73
+bias >= 0.00   3.7 min   2.47 expected records   2.70 privacy units
+bias >= 0.05   4.0 min   1.00                    1.00
+bias >= 0.36   4.8 min   0.73                    0.73
 ```
 
 One extra minute removes four of the five plate readers on the direct route and
@@ -98,8 +99,17 @@ Three findings from that dataset shaped the code:
   unmapped aim — treat it as covering every approach — applies to 4% of
   records, so it is not quietly doing the work of the whole model.
 - **No device carries an explicit field of view.** Every one falls back to the
-  type-profile default, so that constant *is* load-bearing in a way the aim
-  fallback is not. See `DETECTOR_PROFILES` in `packages/core`.
+  type-profile default, and that constant is load-bearing: on the measured trip
+  the expected-records figure runs from 1.29 at 30 degrees to 3.15 at 180, a
+  2.4x spread. It does not decide which way down a road you are caught — aim is
+  axis-symmetric, so a camera pointed east and one pointed west cover an
+  east-west carriageway identically — it decides how much oblique and crossing
+  traffic is charged. See `DETECTOR_PROFILES` in `packages/core`.
+- **The linkage term was inert on real data until this was measured.** It
+  raised a group's summed capture probability to a power, which only penalises
+  totals above 1; real groups sit below that. Atlanta's three-camera Flock
+  group gained 0.4%. It now scales with the group's *effective sighting count*
+  and gains 22% on the same data, and can never discount a group.
 
 Reproduce with:
 

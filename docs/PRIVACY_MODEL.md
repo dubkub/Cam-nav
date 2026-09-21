@@ -61,8 +61,23 @@ The second is four disconnected dots.
 So devices are bucketed by **data-sharing group** before summing:
 
 ```
-privacyUnits = Σ over groups ( Σ over devices in group  p × weight × retention ) ^ 1.35
+n_eff  = (Σ u)² / Σ(u²)                    per group, u = p × weight × retention
+linked = (Σ u) × n_eff ^ (1.35 − 1)        multiplier is never below 1
+privacyUnits = Σ over groups  linked
 ```
+
+The exponent applies to the group's **effective sighting count**, not to the sum
+of its exposures. An earlier version raised the sum itself to the power, which
+looks equivalent and is not: a sum only grows under a power above 1, and real
+per-device capture probabilities are well below 1. Measured against Atlanta, a
+three-camera group summing to 1.01 gained 0.4%, and groups totalling under 1
+were silently *discounted* for being unlikely to see you. The term meant to be
+the model's centrepiece was doing nothing.
+
+`n_eff` is the inverse participation ratio: k equally likely sightings count as
+k, one sighting counts as 1, and a near-certain reading plus a few faint ones
+counts as barely more than one. It is the honest denominator — three cameras
+that probably miss you are not three sightings.
 
 The grouping is the important part. A camera run by a small police department
 but built on a vendor platform that offers cross-agency lookups belongs to that

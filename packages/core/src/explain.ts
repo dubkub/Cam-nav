@@ -129,9 +129,17 @@ export function explainRoute(scored: ScoredRoute, baseline?: ScoredRoute): Route
     );
   }
 
-  if (exposure.citationExposure >= 0.05) {
-    const pct = Math.round(exposure.citationExposure * 100);
-    detail.push(`Passes automated enforcement (${pct}% of this route's devices can issue a citation).`);
+  // Only devices whose job is enforcement get mentioned here. Plate readers
+  // carry a small citation weight too, and summing it into a percentage reads
+  // like a ticket camera warning when there is no ticket camera on the route.
+  const enforcement = exposure.encounters.filter(
+    (e) => e.captureProbability >= 0.05 && e.profile.capture === 'violation',
+  );
+  if (enforcement.length > 0) {
+    const kinds = [...new Set(enforcement.map((e) => e.profile.label.toLowerCase()))];
+    detail.push(
+      `Passes ${plural(enforcement.length, 'automated enforcement camera')} (${kinds.join(', ')}).`,
+    );
   }
 
   if (baseline && baseline.route.id !== scored.route.id && scored.privacyUnitsSaved > 0) {

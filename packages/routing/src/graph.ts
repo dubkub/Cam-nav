@@ -139,6 +139,9 @@ export interface GraphStats {
   ways: number;
   /** Edges carrying a non-zero surveillance surrogate. */
   watchedEdges: number;
+  /** Connected components; a bbox extract always has more than one. */
+  components: number;
+  largestComponentNodes: number;
 }
 
 export class RoadGraph {
@@ -146,6 +149,9 @@ export class RoadGraph {
   private readonly nodeIds = new Map<string, number>();
   private readonly adjacency: Edge[][] = [];
   private maxSpeedKph = 1;
+  private readonly component: Int32Array;
+  /** Component id holding the most nodes — the real network in a bbox extract. */
+  readonly largestComponent: number;
   readonly stats: GraphStats;
 
   constructor(network: RoadNetworkGeoJson, detectors: readonly Detector[] = []) {
@@ -200,7 +206,66 @@ export class RoadGraph {
       wayIndex += 1;
     }
 
-    this.stats = { nodes: this.nodes.length, edges, ways: wayIndex, watchedEdges };
+    this.component = this.computeComponents();
+    let largest = 0;
+    const sizes = new Map<number, number>();
+    for (const c of this.component) sizes.set(c, (sizes.get(c) ?? 0) + 1);
+    for (const [id, size] of sizes) {
+      if (size > (sizes.get(largest) ?? 0)) largest = id;
+    }
+    this.largestComponent = largest;
+
+    this.stats = {
+      nodes: this.nodes.length,
+      edges,
+      ways: wayIndex,
+      watchedEdges,
+      components: sizes.size,
+      largestComponentNodes: sizes.get(largest) ?? 0,
+    };
+  }
+
+  /**
+   * Connected components over undirected adjacency.
+   *
+   * A road network extracted for a bounding box is never one component: ways
+   * are cut at the box edge, leaving stubs joined to nothing, and interchanges
+   * can leave ramp fragments stranded. Snapping an endpoint to whichever node
+   * is nearest therefore lands on an island often enough to matter, and the
+   * search then correctly reports no route between two points that are plainly
+   * connected on a real map. Snapping within one component removes that whole
+   * class of failure.
+   *
+   * Undirected on purpose: a node reachable only against a one-way is still
+   * part of the network for the purpose of choosing where to start.
+   */
+  private computeComponents(): Int32Array {
+    const n = this.nodes.length;
+    const component = new Int32Array(n).fill(-1);
+    const undirected: number[][] = Array.from({ length: n }, () => []);
+    for (let from = 0; from < n; from++) {
+      for (const edge of this.adjacency[from]!) {
+        undirected[from]!.push(edge.to);
+        undirected[edge.to]!.push(from);
+      }
+    }
+    let next = 0;
+    for (let seed = 0; seed < n; seed++) {
+      if (component[seed] !== -1) continue;
+      const id = next++;
+      const stack = [seed];
+      component[seed] = id;
+      while (stack.length > 0) {
+        const node = stack.pop()!;
+        for (const neighbour of undirected[node]!) {
+          if (component[neighbour] === -1) {
+            component[neighbour] = id;
+            stack.push(neighbour);
+          }
+        }
+      }
+    }
+    return component;
   }
 
   private nodeIndex(p: LatLon): number {
@@ -252,11 +317,18 @@ export class RoadGraph {
     return boundsOf(this.nodes);
   }
 
-  /** Nearest graph node to a position, within `maxSnapM`. */
-  nearestNode(target: LatLon, maxSnapM = 500): number | null {
+  /**
+   * Nearest graph node to a position, within `maxSnapM`.
+   *
+   * `component` restricts the search to one connected component, which is how
+   * both ends of a trip are kept on the same network rather than on an island
+   * left behind by the bbox cut.
+   */
+  nearestNode(target: LatLon, maxSnapM = 500, component?: number): number | null {
     let best: number | null = null;
     let bestDistance = Infinity;
     for (let i = 0; i < this.nodes.length; i++) {
+      if (component !== undefined && this.component[i] !== component) continue;
       const d = haversineM(this.nodes[i]!, target);
       if (d < bestDistance) {
         bestDistance = d;
@@ -264,6 +336,10 @@ export class RoadGraph {
       }
     }
     return bestDistance <= maxSnapM ? best : null;
+  }
+
+  componentOf(node: number): number {
+    return this.component[node] ?? -1;
   }
 
   /**
@@ -387,8 +463,14 @@ export class GraphRoutingEngine implements RoutingEngine {
   }
 
   async route(request: RouteRequest): Promise<RouteCandidate[]> {
-    const start = this.graph.nearestNode(request.from, this.options.maxSnapM);
-    const goal = this.graph.nearestNode(request.to, this.options.maxSnapM);
+    // Both ends are snapped into the largest connected component. In a network
+    // extracted for a bounding box that component is the real road system, and
+    // the rest are stubs the box cut loose; snapping to whichever node happens
+    // to be nearest strands trips on those and reports no route between points
+    // that are obviously connected.
+    const component = this.graph.largestComponent;
+    const start = this.graph.nearestNode(request.from, this.options.maxSnapM, component);
+    const goal = this.graph.nearestNode(request.to, this.options.maxSnapM, component);
     if (start == null || goal == null) {
       throw new RoutingError(
         'out_of_coverage',

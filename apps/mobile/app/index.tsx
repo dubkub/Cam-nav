@@ -85,8 +85,13 @@ export default function Home() {
     if (!meta?.coverage) return;
     const { minLat, minLon, maxLat, maxLon } = meta.coverage;
     const midLat = (minLat + maxLat) / 2;
-    setFrom({ lat: midLat, lon: minLon + (maxLon - minLon) * 0.02 });
-    setTo({ lat: midLat, lon: maxLon - (maxLon - minLon) * 0.02 });
+    // Well inside the coverage box, not at its edges. A road network built for
+    // a bounding box has its outermost ways clipped by that box, and the
+    // fragments left behind are often connected to nothing — so endpoints near
+    // the edge snap to a stub and the sample trip fails with "no route found".
+    const inset = 0.2;
+    setFrom({ lat: midLat, lon: minLon + (maxLon - minLon) * inset });
+    setTo({ lat: midLat, lon: maxLon - (maxLon - minLon) * inset });
     setPicking(null);
   }, [meta]);
 

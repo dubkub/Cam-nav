@@ -103,6 +103,11 @@ describe('road graph', () => {
     expect(quiet.travelS).toBeGreaterThan(fast.travelS);
   });
 
+  it('reports how many components the network has', () => {
+    expect(graph.stats.components).toBeGreaterThanOrEqual(1);
+    expect(graph.stats.largestComponentNodes).toBeLessThanOrEqual(graph.stats.nodes);
+  });
+
   it('returns null when the destination is unreachable', () => {
     const isolated = new RoadGraph(
       {
@@ -183,6 +188,39 @@ describe('graph engine', () => {
 
     const breaks = sliderBreakpoints(routes, index);
     expect(breaks.length).toBeGreaterThan(1);
+  });
+
+  it('routes past an isolated stub instead of snapping onto it', async () => {
+    // The real failure this fixes: a road network cut out of a bounding box
+    // leaves fragments joined to nothing. An endpoint beside one used to snap
+    // to it, and the search then correctly reported no route between two
+    // points that are plainly connected on the real map.
+    const withStub = {
+      type: 'FeatureCollection' as const,
+      features: [
+        ...city.network.features,
+        {
+          type: 'Feature' as const,
+          geometry: {
+            type: 'LineString' as const,
+            // A short orphan beside the origin, touching nothing.
+            coordinates: [
+              [city.origin.lon + 0.0004, city.origin.lat + 0.0004],
+              [city.origin.lon + 0.0006, city.origin.lat + 0.0006],
+            ] as Array<[number, number]>,
+          },
+          properties: { highway: 'service' },
+        },
+      ],
+    };
+    const stubbed = new GraphRoutingEngine(withStub, city.detectors);
+    expect(stubbed.stats.components).toBeGreaterThan(1);
+
+    // An origin closer to the stub than to the real network still routes.
+    const beside = { lat: city.origin.lat + 0.00045, lon: city.origin.lon + 0.00045 };
+    const routes = await stubbed.route({ from: beside, to: city.destination });
+    expect(routes.length).toBeGreaterThan(0);
+    expect(routes[0]!.distanceM).toBeGreaterThan(1000);
   });
 
   it('refuses points outside the loaded network instead of guessing', async () => {

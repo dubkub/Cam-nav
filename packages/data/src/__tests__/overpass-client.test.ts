@@ -63,6 +63,52 @@ describe('overpass client', () => {
     expect(error.message).toMatch(/3 host\(s\)/);
   });
 
+  it('gives up on a stalled mirror and tries the next one', async () => {
+    // The case this comes from: two mirrors accepted the connection and never
+    // answered. With no per-attempt ceiling the first one hung forever, so the
+    // retry loop never ran and the build never finished or failed.
+    const hosts: string[] = [];
+    const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {
+      hosts.push(new URL(url).host);
+      if (hosts.length === 1) {
+        // Never resolves on its own; only the abort signal ends it.
+        return new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () =>
+            reject(Object.assign(new Error('timed out'), { name: 'TimeoutError' })),
+          );
+        });
+      }
+      return jsonResponse(okPayload);
+    });
+
+    const result = await runOverpassQuery('q', {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      retryBaseMs: 1,
+      perAttemptTimeoutMs: 50,
+    });
+    expect(result).toBeDefined();
+    expect(hosts.length).toBeGreaterThan(1);
+    expect(hosts[1]).not.toBe(hosts[0]);
+  });
+
+  it('reports a stall as a timeout rather than as an abort', async () => {
+    const fetchImpl = vi.fn(async (_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () =>
+          reject(Object.assign(new Error('The operation was aborted'), { name: 'TimeoutError' })),
+        );
+      }),
+    );
+    const error = await runOverpassQuery('q', {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      retryBaseMs: 1,
+      maxAttempts: 2,
+      // A realistic ceiling, since the message rounds to whole seconds.
+      perAttemptTimeoutMs: 2000,
+    }).catch((e: unknown) => e as Error);
+    expect(error.message).toMatch(/no response within 2s/);
+  });
+
   it('does not swallow an abort', async () => {
     const controller = new AbortController();
     const fetchImpl = vi.fn(async () => {
@@ -74,5 +120,32 @@ describe('overpass client', () => {
     ).rejects.toThrow(/aborted/);
     // One call only: an aborted request must not burn the retry budget.
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('overpass client budget', () => {
+  it('stops once the overall budget is spent, however many mirrors are left', async () => {
+    // Per-attempt timeouts alone still allow attempts x timeout; the budget is
+    // the single number that bounds the worst case.
+    const fetchImpl = vi.fn(async (_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () =>
+          reject(Object.assign(new Error('stalled'), { name: 'TimeoutError' })),
+        );
+      }),
+    );
+    const started = Date.now();
+    const error = await runOverpassQuery('q', {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      retryBaseMs: 1,
+      maxAttempts: 10,
+      perAttemptTimeoutMs: 60,
+      totalBudgetMs: 200,
+    }).catch((e: unknown) => e as Error);
+
+    expect(Date.now() - started).toBeLessThan(1500);
+    expect(error.message).toMatch(/budget of 0\.2s exhausted|no response within/);
+    // Ten attempts were allowed but the budget cut it short.
+    expect(fetchImpl.mock.calls.length).toBeLessThan(10);
   });
 });

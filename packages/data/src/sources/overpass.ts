@@ -55,6 +55,22 @@ export interface OverpassOptions {
   /** Milliseconds to wait between retries; doubles each attempt. */
   retryBaseMs?: number;
   maxAttempts?: number;
+  /**
+   * Per-attempt ceiling. Without one, a mirror that accepts the connection and
+   * then stalls blocks the whole build forever instead of failing over to the
+   * next mirror — the request never returns, so the retry loop never runs.
+   * Comfortably above the server-side `[timeout:N]` in the query so a slow but
+   * working answer is not cut off.
+   */
+  perAttemptTimeoutMs?: number;
+  /**
+   * Ceiling on the whole call, across every attempt. A per-attempt timeout
+   * alone still lets a run of dead mirrors cost attempts x timeout, which on
+   * the defaults is minutes of a CLI apparently doing nothing. Each attempt
+   * gets whatever is left of this, so the worst case is bounded by one number
+   * a caller can reason about.
+   */
+  totalBudgetMs?: number;
   /** Include generic CCTV. Off by default: high volume, low routing value. */
   includeCctv?: boolean;
   fetchImpl?: typeof fetch;
@@ -79,6 +95,9 @@ export async function runOverpassQuery(
   const endpoints = options.endpoints ?? DEFAULT_OVERPASS_ENDPOINTS;
   const maxAttempts = options.maxAttempts ?? 4;
   const baseMs = options.retryBaseMs ?? 2000;
+  const attemptTimeoutMs = options.perAttemptTimeoutMs ?? 150_000;
+  const totalBudgetMs = options.totalBudgetMs ?? 300_000;
+  const startedAt = Date.now();
   const doFetch = options.fetchImpl ?? globalThis.fetch;
   if (!doFetch) throw new Error('No fetch implementation available');
 
@@ -89,6 +108,12 @@ export async function runOverpassQuery(
   // the wrong problem.
   const failures = new Map<string, string>();
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const remainingMs = totalBudgetMs - (Date.now() - startedAt);
+    if (remainingMs <= 0) {
+      failures.set('(budget)', `overall budget of ${totalBudgetMs / 1000}s exhausted`);
+      break;
+    }
+    const thisAttemptMs = Math.min(attemptTimeoutMs, remainingMs);
     const endpoint = endpoints[attempt % endpoints.length]!;
     try {
       options.onProgress?.(`overpass: attempt ${attempt + 1} via ${new URL(endpoint).host}`);
@@ -100,7 +125,11 @@ export async function runOverpassQuery(
           'User-Agent': 'cam-nav/0.1 (+https://github.com/dubkub/cam-nav)',
         },
         body: new URLSearchParams({ data: query }).toString(),
-        ...(signal ? { signal } : {}),
+        // A caller abort and the per-attempt ceiling both have to cut the
+        // request off; only the former stops the retry loop.
+        signal: signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(thisAttemptMs)])
+          : AbortSignal.timeout(thisAttemptMs),
       });
       if (response.status === 429 || response.status === 504 || response.status >= 500) {
         throw new Error(`Overpass ${response.status} from ${endpoint}`);
@@ -112,7 +141,10 @@ export async function runOverpassQuery(
     } catch (error) {
       if (signal?.aborted) throw error;
       const host = new URL(endpoint).host;
-      const message = error instanceof Error ? error.message : String(error);
+      const raw = error instanceof Error ? error.message : String(error);
+      const timedOut =
+        error instanceof Error && (error.name === 'TimeoutError' || /abort/i.test(raw));
+      const message = timedOut ? `no response within ${Math.round(thisAttemptMs / 1000)}s` : raw;
       // Keep the first failure per host; a retry against an already-failed
       // mirror rarely says anything new.
       if (!failures.has(host)) failures.set(host, message);

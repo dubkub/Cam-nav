@@ -41,7 +41,16 @@ export interface DetectorTypeProfile {
   identification: IdentificationLevel;
   /** Effective plate-capture range in metres when the record gives none. */
   defaultRangeM: number;
-  /** Field of view in degrees; 360 means omnidirectional. */
+  /**
+   * Field of view in degrees; 360 means omnidirectional.
+   *
+   * Measured against a real dataset (881 devices, Atlanta): not one carried an
+   * explicit `camera:angle`, so every device in a city falls back to this
+   * number and it shapes every exposure figure. Unlike the unmapped-aim
+   * fallback, which only applied to 4% of that dataset, this default is
+   * genuinely load-bearing and should be revisited with vendor specifications
+   * rather than left as an estimate.
+   */
   defaultFovDeg: number;
   /** Weight on the privacy axis, 0..1. */
   privacyWeight: number;

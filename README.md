@@ -67,6 +67,46 @@ slider breakpoints:
   bias >= 0.30  ->  graph-l100   7.2 min, 0.00 expected captures
 ```
 
+## Measured on real data
+
+Atlanta, GA — 881 devices from OpenStreetMap, of which 876 are plate readers.
+A midtown trip of 2.8 km straight-line, routed over 1018 real road ways with
+the 24 devices that fall inside that box:
+
+```
+graph built   57ms   5192 nodes, 8788 edges, 372 watched
+routed        25ms   4 candidates
+
+bias >= 0.00   3.7 min   2.47 expected records of the trip
+bias >= 0.05   4.0 min   1.00
+bias >= 0.36   4.8 min   0.73
+```
+
+One extra minute removes four of the five plate readers on the direct route and
+cuts expected records by about 70%. At the fastest setting, one operator sees
+that trip three times across 1.1 km — which is the difference between three
+data points and a direction of travel.
+
+Three findings from that dataset shaped the code:
+
+- **91% of Atlanta's plate readers resolve to a single data-sharing group.** A
+  trip across the city is not observed by many independent operators; it is
+  observed repeatedly by one. This is what the superlinear linkage term exists
+  for, and Atlanta is a starker case than the model was originally tuned
+  against.
+- **96% of devices carry a recorded aim.** The conservative fallback for an
+  unmapped aim — treat it as covering every approach — applies to 4% of
+  records, so it is not quietly doing the work of the whole model.
+- **No device carries an explicit field of view.** Every one falls back to the
+  type-profile default, so that constant *is* load-bearing in a way the aim
+  fallback is not. See `DETECTOR_PROFILES` in `packages/core`.
+
+Reproduce with:
+
+```bash
+pnpm ingest --bbox=33.647,-84.551,33.887,-84.289 --out=data/out/atl
+```
+
 ## Run it on real data
 
 ```bash

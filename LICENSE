@@ -1,0 +1,12 @@
+Cam-nav is licensed under the GNU Affero General Public License, version 3 or
+later (AGPL-3.0-or-later).
+
+The canonical text is at https://www.gnu.org/licenses/agpl-3.0.txt and must be
+vendored into this file before the project is distributed. It is referenced
+rather than reproduced here only because this checkout was built without
+network access to fetch it verbatim, and an approximate copy of a licence is
+worse than a pointer to the exact one.
+
+Datasets built by `cam-nav-ingest` from OpenStreetMap are a separate matter:
+they are ODbL-1.0 and must carry "© OpenStreetMap contributors". See
+docs/DATA_SOURCES.md.

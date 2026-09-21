@@ -74,6 +74,9 @@ slider breakpoints:
 # run this on a schedule into a cache, never per user request.
 pnpm ingest --bbox=37.70,-122.52,37.84,-122.35 --out=data/out/sf
 
+# Atlanta, GA — roughly the city limits.
+pnpm ingest --bbox=33.647,-84.551,33.887,-84.289 --out=data/out/atl
+
 DATASET_PATH=data/out/sf/detectors.geojson \
 ROUTING_ENGINE=valhalla VALHALLA_URL=http://localhost:8002 \
 REPORT_SALT="$(openssl rand -hex 32)" \

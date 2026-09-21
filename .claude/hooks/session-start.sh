@@ -25,4 +25,4 @@ pnpm install
 
 pnpm build
 
-echo "cam-nav ready: pnpm test (145 tests), pnpm typecheck, pnpm api, pnpm app:web"
+echo "cam-nav ready: pnpm test, pnpm typecheck, pnpm api, pnpm app:web"

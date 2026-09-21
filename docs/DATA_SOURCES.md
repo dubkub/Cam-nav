@@ -78,6 +78,11 @@ code:
 pnpm ingest --bbox=… --feeds=feeds.json
 ```
 
+`feeds.example.json` in the repo root holds working definitions for a CSV feed
+and a JSON feed with a device-kind map; copy it and edit. It is covered by
+tests, so it cannot drift out of step with the loader — a broken mapping would
+otherwise surface as an empty dataset rather than an error.
+
 ### Community reports
 
 Users see cameras before the datasets catch up, so reports are worth having.

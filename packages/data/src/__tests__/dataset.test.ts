@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { BBox, Detector } from '@cam-nav/core';
 import { buildDataset, diffDatasets, fromFeatureCollection, toFeatureCollection } from '../dataset.js';
@@ -185,5 +187,55 @@ describe('community reports', () => {
     const outside = createReport({ reporterId: 'b', kind: 'alpr', lat: 40.7, lon: -74 }, 'salt');
     const result = await new UserReportSource([inside, outside]).fetch(AREA);
     expect(result.detectors).toHaveLength(1);
+  });
+});
+
+describe('the shipped feed examples', () => {
+  // feeds.example.json is what someone copies to add a city. If the mapping
+  // shape drifts from the parser, that file silently stops working and the
+  // failure shows up as an empty dataset rather than an error.
+  const feeds = JSON.parse(
+    readFileSync(resolve(import.meta.dirname, '../../../../feeds.example.json'), 'utf8'),
+  ) as GenericSourceConfig[];
+
+  it('declares feeds the loader understands', () => {
+    expect(feeds.length).toBeGreaterThan(0);
+    for (const feed of feeds) {
+      expect(feed.id).toBeTruthy();
+      expect(['csv', 'json', 'geojson']).toContain(feed.format);
+      expect(feed.mapping.lat && feed.mapping.lon && feed.mapping.defaultKind).toBeTruthy();
+      expect(feed.attribution && feed.license).toBeTruthy();
+    }
+  });
+
+  it('maps a CSV row through the first example', () => {
+    const csv = feeds.find((f) => f.format === 'csv')!;
+    const d = rowToDetector(
+      {
+        camera_id: 'RLC-7',
+        latitude: '37.78',
+        longitude: '-122.41',
+        operating_agency: 'Example City DOT',
+        approach_direction: 'NE',
+        last_audit_date: '2026-04-01',
+      },
+      csv,
+      '2026-09-21T00:00:00Z',
+    )!;
+    expect(d.kind).toBe('red_light_camera');
+    expect(d.directionDeg).toBe(45);
+    expect(d.provenance[0]!.source).toBe('agency');
+  });
+
+  it('applies a kind map through the JSON example', () => {
+    const json = feeds.find((f) => f.format === 'json')!;
+    const d = rowToDetector(
+      { site_ref: 'S-12', lat: '51.5', lng: '-0.12', device_type: 'Average Speed', authority: 'Example Highways', updated: '2026-06-01' },
+      json,
+      '2026-09-21T00:00:00Z',
+    )!;
+    // Kind values are matched case-insensitively against the map.
+    expect(d.kind).toBe('average_speed_camera');
+    expect(d.operator).toBe('example_highways');
   });
 });

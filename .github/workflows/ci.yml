@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Workspace packages resolve @cam-nav/core through its built dist, so the
+      # build has to precede typecheck and tests on a clean checkout.
+      - run: pnpm build
+
+      - run: pnpm typecheck
+
+      - run: pnpm test
+
+      # The app is the one target with no unit tests of its own; a web export
+      # is what actually proves the shared code and the map still bundle.
+      - name: Export web bundle
+        working-directory: apps/mobile
+        run: pnpm expo export --platform web

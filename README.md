@@ -119,15 +119,29 @@ pnpm ingest --bbox=33.647,-84.551,33.887,-84.289 --out=data/out/atl
 
 ## Run it on real data
 
+Two fetches: the devices, and — for the built-in router — a road network.
+Valhalla and OSRM bring their own.
+
 ```bash
-# Build a dataset for an area. Overpass is volunteer infrastructure:
-# run this on a schedule into a cache, never per user request.
-pnpm ingest --bbox=37.70,-122.52,37.84,-122.35 --out=data/out/sf
+# Devices. Overpass is volunteer infrastructure: run this on a schedule into
+# a cache, never per user request.
+pnpm ingest --bbox=33.76,-84.40,33.79,-84.36 --out=data/out/atl
 
-# Atlanta, GA — roughly the city limits.
-pnpm ingest --bbox=33.647,-84.551,33.887,-84.289 --out=data/out/atl
+# Roads for the same area, a little wider than you mean to route in: a bbox
+# extract is cut at its edges and the outermost ways are stubs.
+pnpm roads  --bbox=33.76,-84.40,33.79,-84.36 --out=data/out/atl/roads.geojson
 
-DATASET_PATH=data/out/sf/detectors.geojson \
+DATASET_PATH=data/out/atl/detectors.geojson \
+ROAD_NETWORK_PATH=data/out/atl/roads.geojson \
+REPORT_SALT="$(openssl rand -hex 32)" \
+pnpm api
+```
+
+Against a self-hosted Valhalla, drop `ROAD_NETWORK_PATH` and point at it
+instead:
+
+```bash
+DATASET_PATH=data/out/atl/detectors.geojson \
 ROUTING_ENGINE=valhalla VALHALLA_URL=http://localhost:8002 \
 REPORT_SALT="$(openssl rand -hex 32)" \
 pnpm api

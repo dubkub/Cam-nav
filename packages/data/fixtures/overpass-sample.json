@@ -1,0 +1,69 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62",
+  "osm3s": { "timestamp_osm_base": "2026-09-19T21:14:02Z" },
+  "elements": [
+    {
+      "type": "node", "id": 11223344001, "lat": 37.7751, "lon": -122.4185,
+      "timestamp": "2026-05-02T18:03:11Z", "version": 3, "user": "mapper_a",
+      "tags": {
+        "man_made": "surveillance", "surveillance": "public", "surveillance:type": "ALPR",
+        "surveillance:zone": "traffic", "camera:type": "fixed", "camera:direction": "275",
+        "manufacturer": "Flock Safety", "operator": "Example City Police Department"
+      }
+    },
+    {
+      "type": "node", "id": 11223344002, "lat": 37.7764, "lon": -122.4131,
+      "timestamp": "2026-08-30T09:41:55Z", "version": 1, "user": "mapper_b",
+      "tags": {
+        "man_made": "surveillance", "surveillance:type": "ANPR",
+        "direction": "NE", "operator": "Example City Police Department",
+        "manufacturer": "Flock Safety"
+      }
+    },
+    {
+      "type": "node", "id": 11223344003, "lat": 37.7702, "lon": -122.4266,
+      "timestamp": "2021-03-14T12:00:00Z", "version": 2,
+      "tags": { "highway": "speed_camera", "maxspeed": "35 mph", "direction": "90-140" }
+    },
+    {
+      "type": "node", "id": 11223344004, "lat": 37.7810, "lon": -122.4090,
+      "timestamp": "2026-02-11T07:22:08Z",
+      "tags": { "man_made": "surveillance", "surveillance:type": "camera", "surveillance:zone": "traffic", "operator": "Caltrans" }
+    },
+    {
+      "type": "node", "id": 11223344005, "lat": 37.7690, "lon": -122.4310,
+      "timestamp": "2026-01-09T15:30:00Z",
+      "tags": { "man_made": "surveillance", "surveillance:type": "camera", "surveillance:zone": "shop" }
+    },
+    {
+      "type": "node", "id": 11223344006, "lat": 37.7733, "lon": -122.4201,
+      "timestamp": "2026-06-18T11:02:00Z",
+      "tags": { "highway": "crossing" }
+    },
+    {
+      "type": "node", "id": 11223344010, "lat": 37.7840, "lon": -122.4012, "timestamp": "2026-04-01T00:00:00Z" },
+    {
+      "type": "node", "id": 11223344011, "lat": 37.7879, "lon": -122.3944, "timestamp": "2026-04-01T00:00:00Z" },
+    {
+      "type": "relation", "id": 55667788, "timestamp": "2026-04-01T00:00:00Z",
+      "tags": { "type": "enforcement", "enforcement": "average_speed", "maxspeed": "55 mph", "operator": "State Highway Patrol" },
+      "members": [
+        { "type": "node", "ref": 11223344010, "role": "device" },
+        { "type": "node", "ref": 11223344011, "role": "device" }
+      ]
+    },
+    {
+      "type": "node", "id": 11223344020, "lat": 37.7799, "lon": -122.4155, "timestamp": "2026-07-07T07:07:07Z" },
+    {
+      "type": "relation", "id": 55667799, "timestamp": "2026-07-07T07:07:07Z",
+      "tags": { "type": "enforcement", "enforcement": "traffic_signals", "operator": "Verra Mobility" },
+      "members": [{ "type": "node", "ref": 11223344020, "role": "device" }]
+    },
+    {
+      "type": "way", "id": 99887766, "center": { "lat": 37.7855, "lon": -122.4001 },
+      "timestamp": "2026-03-20T10:00:00Z",
+      "tags": { "barrier": "toll_booth", "operator": "Bay Area Toll Authority" }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "example_city_redlight",
+    "label": "Example City — red-light camera locations",
+    "sourceId": "agency",
+    "url": "https://data.example.gov/resource/red-light-cameras.csv",
+    "format": "csv",
+    "mapping": {
+      "lat": "latitude",
+      "lon": "longitude",
+      "id": "camera_id",
+      "operator": "operating_agency",
+      "direction": "approach_direction",
+      "lastVerified": "last_audit_date",
+      "defaultKind": "red_light_camera"
+    },
+    "attribution": "City of Example open data",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "example_state_speed",
+    "label": "Example State — automated speed enforcement",
+    "sourceId": "agency",
+    "url": "https://data.example.gov/api/speed-cameras.json",
+    "format": "json",
+    "recordsPath": "result.records",
+    "mapping": {
+      "lat": "lat",
+      "lon": "lng",
+      "id": "site_ref",
+      "kind": "device_type",
+      "kindMap": {
+        "fixed speed": "speed_camera",
+        "average speed": "average_speed_camera",
+        "red light": "red_light_camera"
+      },
+      "operator": "authority",
+      "lastVerified": "updated",
+      "defaultKind": "speed_camera"
+    },
+    "attribution": "Example State Department of Transportation",
+    "license": "OGL-3.0"
+  }
+]

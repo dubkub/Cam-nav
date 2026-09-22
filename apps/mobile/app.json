@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Cam-nav",
+    "slug": "cam-nav",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "camnav",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.camnav.client",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Your location is used on this device to plan a route and is never stored or sent anywhere except to the routing server you have configured."
+      }
+    },
+    "android": {
+      "package": "app.camnav.client",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Your location is used on this device to plan a route and is never stored or sent anywhere except to the routing server you have configured."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
